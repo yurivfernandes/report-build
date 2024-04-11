@@ -1,0 +1,12 @@
+django
+flake8
+mypy
+autopep8
+numpy==1.23.4 
+pandas==1.4.2
+requests
+python-dotenv==0.1.0
+httpx
+djangorestframework==3.14.0 
+openai
+docx
