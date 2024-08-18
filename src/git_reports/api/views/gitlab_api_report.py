@@ -1,4 +1,3 @@
-import json
 import sys
 
 import httpx
@@ -6,8 +5,6 @@ import pandas as pd
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
-from git_reports.settings._git_credentials import GITLAB_TOKEN, GITLAB_URL
 
 # SUBSTITUA O GITLAB_TOKEN PELA STRING COM O TOKEN DO SEU GITLAB
 # SUBSTITUA O GITLAB_URL PELA STRING COM A URL DO SEU GITLAB.
@@ -17,12 +14,24 @@ class GITLABReport(APIView):
     """Efetua a consulta na api do GITLab e retorna um relatório das modificações efetuadas."""
 
     def __init__(self, **kwargs) -> None:
-        self.project_id = kwargs.get("project")
-        self.commit_id = kwargs.get("commit")
+        self.gitlab_token = kwargs.get("gitlab_token")
+        self.gitlab_url = kwargs.get("gitlab_url")
+        url = kwargs.get("gitlab_url")
+        commit = kwargs.get('commit')
+        project = kwargs.get('project')
+        self.api_url = f"{url}/{project}/repository/commits/{commit}/diff"
+        gitlab_token = kwargs.get("gitlab_token")
+        self.headers = {
+            "Private-Token": gitlab_token}
 
     def get(self, request: Request, *args, **kwargs) -> Response:
-        self.project_id = request.query_params.get('project')
-        self.commit_id = request.query_params.get('commit')
+        url = request.query_params.get("gitlab_url")
+        commit = request.query_params.get('commit')
+        project = request.query_params.get('project')
+        self.api_url = f"{url}/{project}/repository/commits/{commit}/diff"
+        gitlab_token = request.query_params.get("gitlab_token")
+        self.headers = {
+            "Private-Token": gitlab_token}
         return Response(self.main())
 
     def main(self) -> list:
@@ -53,9 +62,6 @@ class GITLABReport(APIView):
     @property
     def _get_git_commits(self) -> pd.DataFrame:
         """Busca os dados da API do Git Lab para efetuar os tratamentos necessários"""
-
-        api_url = f"{GITLAB_URL}{self.project_id}/repository/commits/{self.commit_id}/diff"
-        headers = {"Private-Token": GITLAB_TOKEN}
         field_map = {
             'diff': 'changes',
             'old_path': 'old_path',
@@ -64,7 +70,7 @@ class GITLABReport(APIView):
             'renamed_file': 'is_renamed_file',
             'deleted_file': 'is_deleted_file'}
         try:
-            response = httpx.get(api_url, headers=headers)
+            response = httpx.get(self.api_url, headers=self.headers)
 
             if response.status_code == 200:
                 return (
